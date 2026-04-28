@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="static"></div>
+    <div id="flash"></div>
+
+    <h1>BuilderIO Preview Tools</h1>
+    <!-- <h2>Current locale:
+        <span id="currentLocaleDisplay"></span>
+    </h2> -->
+    <form style="
+    gap: 4px;
+    display: flex;
+    flex-direction: column;" id="localeSwitch">
+        <label for="localeDropDown">Switch preview locale:</label>
+        <div style="
+            display: flex;
+            gap: 8px;
+            ">
+            <select style="
+                        width:100%;
+                        height:32px;
+                    " id="localeDropDown">
+                <option disabled selected>Choose a locale...</option>
+                <option value="Default">Default</option>
+                <option value="en-gb">en-gb</option>
+                <option value="it-it">it-it</option>
+                <option value="fr-fr">fr-fr</option>
+                <option value="de-de">de-de</option>
+                <option value="es-es">es-es</option>
+            </select>
+            <button style="width:33%" id="localeSubmitButton" type="submit">Switch</button>
+        </div>
+    </form>
+
+    <button style="margin-top:16px;   display: flex;justify-content: center;
+    align-items: center;
+    gap: 8px;" id="openButton">
+        <img style="filter:invert(1)" src="https://circuit.sumup.com/icons/v2/external_link_16.svg">
+        Open this page in BuilderIO</button>
+
+    <button id="detectSymbolsButton" style="margin-top:16px;width:100%;">
+        Detect Symbols
+    </button>
+
+    <div id="buttonArea">
+        <button id="neonButton" style="z-index: 4;font-size:10px;height:24px;background-color: none;">Toggle neon
+            mode</button>
+    </div>
+    <div id="gridContainer">
+        <!-- <div class="blur"></div> -->
+        <!--<div class="blur"></div>
+        <div class="blur"></div>
+        <div class="blur"></div>
+        <div class="blur"></div> -->
+        <div id="gradientMask"></div>
+
+        <div id="grid"></div>
+    </div>
+
+</body>
+
+<script src="main.js"></script>

@@ -1,0 +1,12 @@
+{
+    "manifest_version": 3,
+    "name": "BuilderIO preview tools",
+    "description": "Allows you to switch locales on a BuilderIO preview URL",
+    "version": "1.0",
+    "permissions": ["tabs", "activeTab", "scripting"],
+    "host_permissions": ["<all_urls>"],
+    "action": {
+      "default_popup": "index.html",
+      "default_icon": "icon.png"
+    }
+  }
