@@ -1,27 +1,34 @@
 console.log("main.js loaded");
 
 //DOM elements
-const dropdown = document.querySelector("#localeDropDown")
+const localeDropdwon = document.querySelector("#localeDropDown")
+const urlParamDropDown = document.querySelector("#urlParamDropDown")
 const localeSubmitButton = document.querySelector("#localeSubmitButton")
 const localeSwitch = document.querySelector("#localeSwitch")
 // const searchButton = document.getElementById("searchButton")
 const openButton = document.getElementById("openButton")
 const detectSymbolsButton = document.getElementById("detectSymbolsButton")
 const neonButton = document.getElementById("neonButton")
+const urlParamSubmitButton = document.getElementById("urlParamSubmitButton")
+const urlParamSwitch = document.querySelector("#urlParamSwitch")
 
 //URLS
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (!tabs[0]?.url) {
-        console.log("No valid tab URL found");
-        return;
-    }
+if (typeof chrome !== 'undefined' && chrome.tabs) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs[0]?.url) {
+            console.log("No valid tab URL found");
+            return;
+        }
 
-    const currentURL = tabs[0].url;
-    console.log("Current tab URL: ", currentURL);
+        const currentURL = tabs[0].url;
+        console.log("Current tab URL: ", currentURL);
 
-    const locale = getLocaleFromUrl(currentURL);
-    console.log("Current locale: ", locale);
-});
+        const locale = getLocaleFromUrl(currentURL);
+        console.log("Current locale: ", locale);
+    });
+} else {
+    console.warn("Chrome extension API not available");
+}
 
 function getLocaleFromUrl(url) {
     try {
@@ -40,9 +47,39 @@ function getLocaleFromUrl(url) {
 }
 
 
+//URL params
+urlParamDropDown.addEventListener("change", (e) => {
+    console.log("select")
+    selectedParam = e.target.value
+    console.log("param selected: ", selectedParam)
+})
+
+urlParamSwitch.addEventListener("submit", () => {
+    event.preventDefault()
+    console.log("parameter submitted: ", selectedParam)
+
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]?.url || !selectedParam) {
+                console.log("Missing tab URL or target parameter");
+                return;
+            }
+            const currentURL = tabs[0].url;
+            const newURL = currentURL + selectedParam
+            console.log(currentURL, newURL)
+            chrome.tabs.update(tabs[0].id, { url: newURL });
+
+
+        });
+    } else {
+        console.warn("Chrome extension API not available");
+    }
+
+})
+
 let targetLocale
 //Dropdown change
-dropdown.addEventListener("change", (e) => {
+localeDropdwon.addEventListener("change", (e) => {
     targetLocale = e.target.value
     console.log("locale changed: ", targetLocale)
 })
@@ -52,69 +89,77 @@ localeSwitch.addEventListener("submit", () => {
     event.preventDefault()
     console.log("locale submitted: ", targetLocale)
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs[0]?.url || !targetLocale) {
-            console.log("Missing tab URL or target locale");
-            return;
-        }
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]?.url || !targetLocale) {
+                console.log("Missing tab URL or target locale");
+                return;
+            }
 
-        const currentURL = tabs[0].url;
-        const urlObj = new URL(currentURL);
-        const pathname = urlObj.pathname;
-        const segments = pathname.split('/').filter(Boolean);
+            const currentURL = tabs[0].url;
+            const urlObj = new URL(currentURL);
+            const pathname = urlObj.pathname;
+            const segments = pathname.split('/').filter(Boolean);
 
-        // Replace the first segment (current locale) with the new locale
-        segments[0] = targetLocale;
-        const newPathname = '/' + segments.join('/');
+            // Replace the first segment (current locale) with the new locale
+            segments[0] = targetLocale;
+            const newPathname = '/' + segments.join('/');
 
-        urlObj.pathname = newPathname;
-        const newURL = urlObj.toString();
+            urlObj.pathname = newPathname;
+            const newURL = urlObj.toString();
 
-        console.log("Navigating to: ", newURL);
-        chrome.tabs.update(tabs[0].id, { url: newURL });
-    });
+            console.log("Navigating to: ", newURL);
+            chrome.tabs.update(tabs[0].id, { url: newURL });
+        });
+    } else {
+        console.warn("Chrome extension API not available");
+    }
 })
 
 //Page open button 
 openButton.addEventListener("click", goToSourcePage)
 
 function checkPageContentType() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs[0]) {
-            console.log("No active tab found");
-            return;
-        }
-
-        const currentURL = tabs[0].url;
-        const slug = getSlugFromUrl(currentURL);
-
-        chrome.scripting.executeScript(
-            {
-                target: { tabId: tabs[0].id },
-                function: parsePageContent
-            },
-            (results) => {
-                if (results && results[0]) {
-                    const contentType = results[0].result;
-                    console.log("Page content type: ", contentType);
-
-                    let modelId;
-                    if (contentType === "page") {
-                        modelId = "88f4521621a94d8eb05a1dc7e9d1ce37_ab3eae29d1a34383ad68a2ca2ca739a1";
-                    } else if (contentType === "landing-page") {
-                        modelId = "88f4521621a94d8eb05a1dc7e9d1ce37_90248c906d36466c88c64c4e209f65e9";
-                    } else {
-                        console.log("Unknown content type");
-                        return;
-                    }
-
-                    const redirectUrl = `https://builder.io/content?model=${modelId}&text=${slug}`;
-                    console.log("Redirecting to: ", redirectUrl);
-                    chrome.tabs.create({ url: redirectUrl });
-                }
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]) {
+                console.log("No active tab found");
+                return;
             }
-        );
-    });
+
+            const currentURL = tabs[0].url;
+            const slug = getSlugFromUrl(currentURL);
+
+            chrome.scripting.executeScript(
+                {
+                    target: { tabId: tabs[0].id },
+                    function: parsePageContent
+                },
+                (results) => {
+                    if (results && results[0]) {
+                        const contentType = results[0].result;
+                        console.log("Page content type: ", contentType);
+
+                        let modelId;
+                        if (contentType === "page") {
+                            modelId = "88f4521621a94d8eb05a1dc7e9d1ce37_ab3eae29d1a34383ad68a2ca2ca739a1";
+                        } else if (contentType === "landing-page") {
+                            modelId = "88f4521621a94d8eb05a1dc7e9d1ce37_90248c906d36466c88c64c4e209f65e9";
+                        } else {
+                            console.log("Unknown content type");
+                            return;
+                        }
+
+                        const redirectUrl = `https://builder.io/content?model=${modelId}&text=${slug}`;
+                        console.log("Redirecting to: ", redirectUrl);
+                        chrome.tabs.create({ url: redirectUrl });
+                    }
+                }
+            );
+        });
+    } else {
+        console.warn("Chrome extension API not available");
+    }
 }
 
 function getSlugFromUrl(url) {
@@ -159,28 +204,32 @@ function parsePageContent() {
 }
 
 function goToSourcePage() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs[0]?.url) {
-            console.log("No active tab URL found");
-            return;
-        }
-
-        try {
-            const urlObj = new URL(tabs[0].url);
-            const identifier = urlObj.searchParams.get("builder.overrides.page");
-
-            if (!identifier) {
-                console.log("No builder.overrides.page parameter found");
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]?.url) {
+                console.log("No active tab URL found");
                 return;
             }
 
-            const sourceUrl = `https://builder.io/content/${identifier}`;
-            console.log("Opening source page: ", sourceUrl);
-            chrome.tabs.create({ url: sourceUrl });
-        } catch (error) {
-            console.error("Error extracting identifier: ", error);
-        }
-    });
+            try {
+                const urlObj = new URL(tabs[0].url);
+                const identifier = urlObj.searchParams.get("builder.overrides.page");
+
+                if (!identifier) {
+                    console.log("No builder.overrides.page parameter found");
+                    return;
+                }
+
+                const sourceUrl = `https://builder.io/content/${identifier}`;
+                console.log("Opening source page: ", sourceUrl);
+                chrome.tabs.create({ url: sourceUrl });
+            } catch (error) {
+                console.error("Error extracting identifier: ", error);
+            }
+        });
+    } else {
+        console.warn("Chrome extension API not available");
+    }
 }
 
 function extractSymbolContentIds() {
@@ -199,26 +248,30 @@ function extractSymbolContentIds() {
 }
 
 function detectSymbolsInTab() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs[0]) {
-            console.log("No active tab");
-            return;
-        }
-
-        chrome.scripting.executeScript(
-            {
-                target: { tabId: tabs[0].id },
-                function: extractSymbolContentIds
-            },
-            (results) => {
-                if (results && results[0]) {
-                    const contentIds = results[0].result;
-                    console.log("Content IDs found:", contentIds);
-                    // Do something with contentIds (display, process, etc.)
-                }
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]) {
+                console.log("No active tab");
+                return;
             }
-        );
-    });
+
+            chrome.scripting.executeScript(
+                {
+                    target: { tabId: tabs[0].id },
+                    function: extractSymbolContentIds
+                },
+                (results) => {
+                    if (results && results[0]) {
+                        const contentIds = results[0].result;
+                        console.log("Content IDs found:", contentIds);
+                        // Do something with contentIds (display, process, etc.)
+                    }
+                }
+            );
+        });
+    } else {
+        console.warn("Chrome extension API not available");
+    }
 }
 
 document.getElementById("detectSymbolsButton").addEventListener("click", detectSymbolsInTab);
