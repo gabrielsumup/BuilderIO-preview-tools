@@ -213,16 +213,32 @@ function goToSourcePage() {
 
             try {
                 const urlObj = new URL(tabs[0].url);
-                const identifier = urlObj.searchParams.get("builder.overrides.page");
 
-                if (!identifier) {
-                    console.log("No builder.overrides.page parameter found");
+                // First, try to get identifier from URL parameters (preview URL)
+                let identifier = urlObj.searchParams.get("builder.overrides.page");
+
+                if (identifier) {
+                    console.log("Found identifier in URL parameters");
+                    openInBuilder(identifier);
                     return;
                 }
 
-                const sourceUrl = `https://builder.io/content/${identifier}`;
-                console.log("Opening source page: ", sourceUrl);
-                chrome.tabs.create({ url: sourceUrl });
+                // If not found in URL, try to extract from HTML (live page)
+                chrome.scripting.executeScript(
+                    {
+                        target: { tabId: tabs[0].id },
+                        function: extractIdentifierFromHtml
+                    },
+                    (results) => {
+                        if (results && results[0] && results[0].result) {
+                            identifier = results[0].result;
+                            console.log("Found identifier in HTML class: ", identifier);
+                            openInBuilder(identifier);
+                        } else {
+                            console.log("No identifier found in URL or HTML");
+                        }
+                    }
+                );
             } catch (error) {
                 console.error("Error extracting identifier: ", error);
             }
@@ -230,6 +246,44 @@ function goToSourcePage() {
     } else {
         console.warn("Chrome extension API not available");
     }
+}
+
+function extractIdentifierFromHtml() {
+    const mainElement = document.querySelector("main");
+
+    if (!mainElement) {
+        console.log("No <main> element found");
+        return null;
+    }
+
+    // Find div with builder-component classes
+    const builderDiv = mainElement.querySelector("[class*='builder-component-']");
+
+    if (!builderDiv) {
+        console.log("No builder component div found");
+        return null;
+    }
+
+    // Get all classes
+    const classes = builderDiv.className.split(' ');
+
+    // Find the class that starts with 'builder-component-'
+    const componentClass = classes.find(cls => cls.startsWith('builder-component-'));
+
+    if (componentClass) {
+        // Extract the ID by removing 'builder-component-' prefix
+        const identifier = componentClass.replace('builder-component-', '');
+        console.log("Extracted identifier: ", identifier);
+        return identifier;
+    }
+
+    return null;
+}
+
+function openInBuilder(identifier) {
+    const sourceUrl = `https://builder.io/content/${identifier}`;
+    console.log("Opening source page: ", sourceUrl);
+    chrome.tabs.create({ url: sourceUrl });
 }
 
 function extractSymbolContentIds() {
@@ -248,6 +302,7 @@ function extractSymbolContentIds() {
 }
 
 function detectSymbolsInTab() {
+    console.log("detecting symbols")
     if (typeof chrome !== 'undefined' && chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (!tabs[0]) {
@@ -264,7 +319,7 @@ function detectSymbolsInTab() {
                     if (results && results[0]) {
                         const contentIds = results[0].result;
                         console.log("Content IDs found:", contentIds);
-                        // Do something with contentIds (display, process, etc.)
+                        displaySymbolsList(contentIds);
                     }
                 }
             );
@@ -274,7 +329,63 @@ function detectSymbolsInTab() {
     }
 }
 
-document.getElementById("detectSymbolsButton").addEventListener("click", detectSymbolsInTab);
+function displaySymbolsList(contentIds) {
+    // Clear previous results
+    const existingContainer = document.getElementById("symbolsContainer");
+    if (existingContainer) {
+        existingContainer.remove();
+    }
+
+    // Create container
+    const container = document.createElement("div");
+    container.id = "symbolsContainer";
+    container.style.cssText = `
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid #e6e6e6;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+    `;
+
+    // Add title
+    const title = document.createElement("h3");
+    title.textContent = `Found ${contentIds.length} Symbols`;
+    title.style.margin = "0 0 12px 0";
+    container.appendChild(title);
+
+    // Create buttons for each symbol
+    contentIds.forEach((contentId) => {
+        const button = document.createElement("button");
+        button.textContent = contentId;
+        button.style.cssText = `
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+            word-break: break-all;
+        `;
+
+        button.addEventListener("click", () => {
+            // Send message to page to scroll to symbol
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: "scrollToSymbol",
+                    contentId: contentId
+                });
+            });
+        });
+
+        container.appendChild(button);
+    });
+
+    // Add to popup
+    document.body.appendChild(container);
+}
+
+// document.getElementById("detectSymbolsButton").addEventListener("click", detectSymbolsInTab);
 
 
 //NEON MODE
