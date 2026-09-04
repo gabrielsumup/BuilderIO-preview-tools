@@ -311,6 +311,7 @@ body.neonized #gridContainer {
     /* display: flex; */
     justify-content: center;
     z-index: -1;
+    overflow: hidden;
 }
 
 #grid {
